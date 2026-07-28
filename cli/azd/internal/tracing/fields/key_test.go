@@ -28,3 +28,11 @@ func TestErrorKey(t *testing.T) {
 		})
 	}
 }
+
+func TestExtensionUsageKey(t *testing.T) {
+	key := ExtensionUsageKey("ext.contoso.tools.deploy.mode")
+
+	require.Equal(t, attribute.Key("ext.contoso.tools.deploy.mode"), key.Key)
+	require.Equal(t, SystemMetadata, key.Classification)
+	require.Equal(t, FeatureInsight, key.Purpose)
+}

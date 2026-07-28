@@ -449,6 +449,7 @@ Emitted at provision start by the `microsoft.foundry` provisioning provider (the
 |-----------|------|-------------|
 | `extension.id` | string | Extension identifier |
 | `extension.version` | string | Extension version |
+| `ext.<extension-id>.<field>` | string | One registry-declared enum value on an `ext.usage` span |
 | `extension.installed` | string[] | List of installed extensions (`id@version`) |
 | `extension.version.from` | string | Version before an upgrade or promotion (`ext.upgrade`, `ext.promote`) |
 | `extension.version.to` | string | Version after an upgrade or promotion (`ext.upgrade`, `ext.promote`) |
@@ -460,6 +461,11 @@ Emitted at provision start by the `microsoft.foundry` provisioning provider (the
 | `extension.upgrade.outcome` | string | Upgrade result status (`ext.upgrade`) |
 | `extension.dependency_of` | string | Parent extension ID when an extension is upgraded as a dependency (`ext.upgrade`) |
 | `extension.dependency_upgrade_count` | measurement | Number of dependency extensions upgraded recursively (`ext.upgrade`) |
+
+Each `ext.usage` span contains `extension.id`, `extension.version`, and one
+dynamic `ext.*` field. The exact key and closed value set must be declared in
+the extension's official registry entry. These fixed enum values are classified
+as `SystemMetadata` for `FeatureInsight`.
 </details>
 
 <details>
@@ -696,7 +702,7 @@ How to find telemetry for a given feature area. Start here if you know the featu
 | **Provisioning (IaC)** | `cmd.provision`, `cmd.up`, `cmd.down`, `arm.deploy.*`, `arm.validate.*` | `infra.provider` (`bicep`/`terraform`/`arm`/`pulumi`/custom; slice of each distinct provider for multi-layer projects) | Provision success, ARM errors, duration |
 | **Authentication** | `cmd.auth.login` | `auth.method` | Auth method usage, failure rates |
 | **CI/CD Pipelines** | `cmd.pipeline.config` | `pipeline.provider` | Pipeline setup adoption |
-| **Extensions** | `ext.run`, `ext.install`, `ext.upgrade` | `extension.id`, `extension.version`, `extension.installed` | Extension adoption, errors |
+| **Extensions** | `ext.run`, `ext.install`, `ext.upgrade`, `ext.usage` | `extension.id`, `extension.version`, `extension.installed`, registry-declared `ext.*` fields | Extension adoption, errors, declared usage modes |
 | **MCP** | `mcp.<tool_name>` | `mcp.client.name`, `mcp.client.version` | Tool usage by client |
 | **Agentic (Copilot)** | `copilot.initialize`, `copilot.session` | `copilot.mode`, `copilot.init.model`, `copilot.message.*` | Session counts, token usage |
 | **Agent Troubleshooting** | `agent.troubleshoot` | `agent.fix.attempts` | Auto-fix adoption, retry counts |

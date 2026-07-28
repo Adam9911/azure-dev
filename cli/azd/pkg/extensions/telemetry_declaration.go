@@ -9,9 +9,8 @@ import (
 	"strings"
 )
 
-// Bounds for extension-declared telemetry fields. They keep registry entries
-// small and are re-checked at runtime so a tampered local install cannot
-// widen them.
+// Bounds keep registry entries small and are re-checked at runtime so
+// malformed installed metadata cannot bypass them.
 const (
 	// MaxTelemetryFields is the number of fields one extension version may
 	// declare.
@@ -31,9 +30,8 @@ const TelemetryKeyPrefix = "ext."
 // telemetryKeySegmentRegex matches one dot-separated segment of a key.
 var telemetryKeySegmentRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
-// telemetryValueRegex bounds declared values to a conservative charset. It
-// deliberately excludes ':' and '/' so a declaration cannot smuggle registry
-// names, URLs, or paths into a value.
+// telemetryValueRegex bounds values to a conservative charset. It excludes
+// common URL and path separators as a defense in depth measure.
 var telemetryValueRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9_.-]*[a-z0-9])?$`)
 
 // TelemetryFieldDeclaration declares one usage attribute that an extension

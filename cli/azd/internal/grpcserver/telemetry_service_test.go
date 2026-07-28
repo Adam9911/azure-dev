@@ -5,6 +5,7 @@ package grpcserver
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -23,15 +24,19 @@ import (
 
 const testTelemetryKey = "ext.azd.internal.telemetry.deploy.mode"
 
-// stubExtensionLookup returns a fixed installed extension record, or a
-// not-found error when the requested id does not match.
+// stubExtensionLookup returns a configured error or installed record.
 type stubExtensionLookup struct {
 	extension *extensions.Extension
+	err       error
 }
 
 func (s stubExtensionLookup) GetInstalled(
 	options extensions.FilterOptions,
 ) (*extensions.Extension, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+
 	if s.extension == nil || s.extension.Id != options.Id {
 		return nil, extensions.ErrInstalledExtensionNotFound
 	}
@@ -78,7 +83,7 @@ func callWithContext(
 ) (*azdext.ReportUsageAttributeResponse, error) {
 	t.Helper()
 
-	service := newTelemetryService(stubExtensionLookup{extension})
+	service := newTelemetryService(stubExtensionLookup{extension: extension})
 	ctx = extensions.WithClaimsContext(ctx, &extensions.ExtensionClaims{
 		RegisteredClaims: jwt.RegisteredClaims{Subject: extension.Id},
 		Capabilities:     extension.Capabilities,
@@ -170,7 +175,9 @@ func Test_TelemetryService_RecordsNoSpanWhenRejected(t *testing.T) {
 func Test_TelemetryService_RequiresClaims(t *testing.T) {
 	t.Parallel()
 
-	service := newTelemetryService(stubExtensionLookup{testExtension()})
+	service := newTelemetryService(stubExtensionLookup{
+		extension: testExtension(),
+	})
 	_, err := service.ReportUsageAttribute(t.Context(), &azdext.ReportUsageAttributeRequest{
 		Key:   testTelemetryKey,
 		Value: "code",
@@ -270,6 +277,27 @@ func Test_TelemetryService_RejectsUninstalledExtension(t *testing.T) {
 	requireCode(t, err, codes.PermissionDenied)
 }
 
+func Test_TelemetryService_ReportsLookupFailure(t *testing.T) {
+	t.Parallel()
+
+	service := newTelemetryService(stubExtensionLookup{
+		err: errors.New("failed to read installed config"),
+	})
+	ctx := extensions.WithClaimsContext(t.Context(), &extensions.ExtensionClaims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "azd.internal.telemetry"},
+		Capabilities:     []extensions.CapabilityType{extensions.TelemetryCapability},
+		Source:           extensions.MainRegistryName,
+	})
+
+	_, err := service.ReportUsageAttribute(ctx, &azdext.ReportUsageAttributeRequest{
+		Key:   testTelemetryKey,
+		Value: "code",
+	})
+
+	requireCode(t, err, codes.Internal)
+	require.NotContains(t, err.Error(), "installed config")
+}
+
 func Test_TelemetryService_RejectsUndeclaredKeyOrValue(t *testing.T) {
 	t.Parallel()
 
@@ -289,10 +317,10 @@ func Test_TelemetryService_RejectsUndeclaredKeyOrValue(t *testing.T) {
 	}
 }
 
-func Test_TelemetryService_RejectsTamperedDeclaration(t *testing.T) {
+func Test_TelemetryService_RejectsInvalidStoredDeclaration(t *testing.T) {
 	t.Parallel()
 
-	// The installed record lives in user config, so a locally widened
+	// The installed record lives in user config, so an invalid local
 	// declaration must be rejected instead of trusted.
 	extension := testExtension()
 	extension.Telemetry = []extensions.TelemetryFieldDeclaration{

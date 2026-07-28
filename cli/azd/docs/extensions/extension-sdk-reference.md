@@ -555,8 +555,9 @@ Declare fields in the registry entry alongside the capability:
 ```
 
 Keys must be namespaced as `ext.<extension id>.<segment>`, and values are
-limited to lowercase alphanumerics with `_`, `-`, and `.` so registry names,
-URLs, and paths cannot be smuggled through a value. See
+limited to lowercase alphanumerics with `_`, `-`, and `.`. The charset excludes
+common URL and path separators as defense in depth; the registry privacy review
+must still verify every exact allowed value. See
 [Extension Telemetry Fields](./extension-telemetry-fields.md) for the full
 declaration rules and review process.
 

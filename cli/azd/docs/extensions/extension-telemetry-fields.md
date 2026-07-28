@@ -20,10 +20,10 @@ for the reasoning behind this design.
 | Always rejected | Free-form values, values outside your declared set, keys you did not declare |
 
 Values must be a closed enum because that is what makes a privacy review
-possible. A shape-only rule (length and charset) would let someone pack a
-container image reference into a value and leak a private registry name, so
-the charset excludes `:` and `/` and the host compares each value against
-your declaration.
+possible. Shape-only rules cannot prove that a value is free of customer
+content. The charset excludes common URL and path separators as defense in
+depth, and the host also compares each value against your reviewed
+declaration.
 
 ## Step 1: Declare the capability
 
@@ -66,8 +66,9 @@ Rules enforced when the registry is validated:
 | Value charset | Lowercase alphanumerics plus `_`, `-`, `.` |
 | Capability | `telemetry` must be present when fields are declared |
 
-The pull request that adds these values is the privacy review. Expect
-reviewers to ask what each value means and why it is needed.
+The pull request that adds these values must trigger a privacy review. Expect
+reviewers to ask what each value means and why it is needed. Follow the
+[telemetry privacy review checklist](../../../../docs/specs/metrics-audit/privacy-review-checklist.md).
 
 ## Step 3: Report from your extension
 

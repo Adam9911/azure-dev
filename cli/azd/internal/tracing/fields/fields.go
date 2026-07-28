@@ -38,6 +38,16 @@ const (
 	PerformanceAndHealth Purpose = "PerformanceAndHealth"
 )
 
+// ExtensionUsageKey classifies a validated extension usage key.
+// Callers must validate the key and its closed value set before use.
+func ExtensionUsageKey(key string) AttributeKey {
+	return AttributeKey{
+		Key:            attribute.Key(key),
+		Classification: SystemMetadata,
+		Purpose:        FeatureInsight,
+	}
+}
+
 // Application-level fields. Guaranteed to be set and available for all events.
 var (
 	// Application name. Value is always "azd".

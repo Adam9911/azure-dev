@@ -5,6 +5,7 @@ package grpcserver
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/azure/azure-dev/cli/azd/internal/tracing/fields"
 	"github.com/azure/azure-dev/cli/azd/pkg/azdext"
 	"github.com/azure/azure-dev/cli/azd/pkg/extensions"
-	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -65,9 +65,11 @@ func (s *telemetryService) ReportUsageAttribute(
 		return nil, status.Error(codes.InvalidArgument, "telemetry key and value are required")
 	}
 
-	// Only extensions published through the official registry may report
-	// telemetry, because that registry is where declared fields are reviewed.
-	// Source is host-signed, so an extension cannot claim a better origin.
+	// Gate on the recorded install source. The claim is
+	// host-signed, so an extension cannot raise its own source per
+	// request, but the record lives in user config. This keeps
+	// well-behaved extensions inside reviewed declarations; it is
+	// not proof of provenance.
 	if !strings.EqualFold(claims.Source, extensions.MainRegistryName) {
 		return nil, status.Error(codes.PermissionDenied,
 			"telemetry requires an extension installed from the official registry")
@@ -79,7 +81,11 @@ func (s *telemetryService) ReportUsageAttribute(
 
 	extension, err := s.extensions.GetInstalled(extensions.FilterOptions{Id: claims.Subject})
 	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, "extension is not installed")
+		if errors.Is(err, extensions.ErrInstalledExtensionNotFound) {
+			return nil, status.Error(codes.PermissionDenied, "extension is not installed")
+		}
+
+		return nil, status.Error(codes.Internal, "failed to verify installed extension")
 	}
 
 	// Re-validate the stored declaration. The installed record lives in user
@@ -100,7 +106,7 @@ func (s *telemetryService) ReportUsageAttribute(
 	span.SetAttributes(
 		fields.ExtensionId.String(extension.Id),
 		fields.ExtensionVersion.String(extension.Version),
-		attribute.String(req.Key, req.Value),
+		fields.ExtensionUsageKey(req.Key).String(req.Value),
 	)
 	span.End()
 

@@ -231,10 +231,10 @@ guarantees about the whole class:
 |------|-------------|
 | Key namespace | Must be `ext.<extension id>.<segment>[.<segment>…]`, lowercase alphanumeric and hyphens |
 | Values | Must be one of the closed set declared for that key in the registry; free-form values are always rejected |
-| Value charset | Lowercase alphanumeric with `_`, `-`, and `.`; `:` and `/` are excluded so registry names, URLs, and paths cannot be smuggled through |
+| Value charset | Lowercase alphanumeric with `_`, `-`, and `.`; common URL and path separators are excluded as defense in depth, while exact values remain privacy-reviewed |
 | Classification | Always `SystemMetadata` |
 | Purpose | Always `FeatureInsight` |
-| Trust | Only extensions installed from the official `azd` registry, carrying the `telemetry` capability, may report values |
+| Trust | The `telemetry` capability and the recorded install source are read from host-signed claims, so an extension cannot raise either on the request itself |
 | Review | Adding or changing a declared field is a change to the official registry in this repository and is reviewed like any other telemetry change |
 
 Because `ext.usage` spans share the command's trace, they join the originating
@@ -243,6 +243,18 @@ command in Kusto on `operation_Id`. See
 the design rationale and
 [Extension Telemetry Fields](../../../cli/azd/docs/extensions/extension-telemetry-fields.md)
 for the author-facing declaration rules.
+
+#### What this class does and does not guarantee
+
+These rules bound what a **non-tampered** install emits: a well-behaved
+extension can only report values that went through registry review. They are
+not a cryptographic provenance guarantee. The capability, the install source,
+and the stored declaration all originate from local `azd` config, which is the
+same trust level every other extension capability gate already depends on.
+
+When governing this data, treat `(extension.id, extension.version, key)` as
+the authoritative filter rather than assuming the client enforced the reviewed
+set on its own.
 
 ### Update
 

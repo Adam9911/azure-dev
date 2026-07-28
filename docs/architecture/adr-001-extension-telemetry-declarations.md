@@ -31,12 +31,13 @@ enforces them.**
   `capabilities`, `providers`, and `mcp`.
 - Publish-time validation (`ValidateTelemetryDeclarations`) enforces the shape:
   keys namespaced as `ext.<extension id>.<segment>`, a non-empty closed value
-  set, and a charset that excludes `:` and `/` so registry names, URLs, and
-  paths cannot be smuggled through a value. Bounds cap the number of fields,
-  values, and lengths.
+  set, and a conservative charset that excludes common URL and path
+  separators. Bounds cap the number of fields, values, and lengths. The exact
+  allowed values still require privacy review.
 - A dedicated `telemetry` capability gates the feature, and the extension's
-  install `Source` is carried in the host-signed JWT claims. Only extensions
-  installed from the official `azd` registry are allowed to report.
+  recorded install `Source` is carried in the host-signed JWT claims, so an
+  extension cannot raise either on the request itself. Only extensions whose
+  recorded source is the official `azd` registry are allowed to report.
 - At runtime the host re-validates the stored declaration before use, because
   the installed record lives in user-writable config.
 - Accepted values are recorded on a new `ext.usage` span rather than being
@@ -74,7 +75,9 @@ just no longer occupies a core release slot.
 - Those claims are signed from the installed record, which lives in
   user-writable config. This is the same trust level every existing capability
   gate already depends on, so the feature does not weaken it, but it is not
-  proof of provenance. Hardening the installed record is tracked separately.
+  proof of provenance. Client-side checks bound what a non-tampered install
+  emits; governing the data authoritatively means filtering on
+  `(extension.id, extension.version, key)` downstream.
 
 ## Alternatives Considered
 
@@ -97,3 +100,14 @@ Rejected: it requires a process-global command-usage scope stack that has to be
 opened and closed by middleware and kept correct across nested and concurrent
 commands. Supporting both models would mean maintaining that machinery *and*
 the new span path.
+
+**Verify a signed registry manifest on every report** — ship a public key in
+`azd`, sign each version's capabilities and telemetry declarations at publish
+time, and re-verify before accepting a value. Rejected as disproportionate. It
+adds key management, rotation, and an offline story to a best-effort telemetry
+path, and it would still only harden one client-side hop: telemetry ingestion
+is not authenticated per client, so no amount of local verification makes the
+reviewed set enforceable from the client. The reviewed-set guarantee belongs
+downstream, where `(extension.id, extension.version, key)` can be filtered
+against the known registry. Editing the installed record also already implies
+local write access, which is a strictly larger problem than telemetry.

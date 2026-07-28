@@ -71,7 +71,7 @@ func Test_Server_Start(t *testing.T) {
 		azdext.UnimplementedCopilotServiceServer{},
 		azdext.UnimplementedProvisioningServiceServer{},
 		azdext.UnimplementedValidationServiceServer{},
-		newTelemetryService(stubExtensionLookup{reportingExtension}),
+		newTelemetryService(stubExtensionLookup{extension: reportingExtension}),
 	)
 
 	serverInfo, err := server.Start()

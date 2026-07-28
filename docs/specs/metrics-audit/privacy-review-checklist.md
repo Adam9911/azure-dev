@@ -7,8 +7,9 @@ the data classification framework, hashing requirements, and a PR checklist temp
 
 A privacy review **must** be triggered when any of the following conditions are met:
 
-1. **New telemetry field** — Any new attribute key added to `cli/azd/internal/tracing/fields/fields.go` or emitted
-   via `SetUsageAttributes` / `tracing.SetSpanAttributes`.
+1. **New telemetry field** — Any new attribute key added to
+   `cli/azd/internal/tracing/fields/fields.go`, emitted through tracing APIs, or
+   added to an extension version's registry `telemetry` declaration.
 
 2. **New event** — Any new event constant added to `cli/azd/internal/tracing/events/events.go` or new span name
    introduced via `tracing.Start`.
@@ -178,7 +179,10 @@ A new field should **not** be hashed if:
 
 When adding a new telemetry field:
 
-1. **Define the field** in `internal/telemetry/fields/fields.go` using the `NewKey` pattern.
+1. **Define the field** in `internal/tracing/fields/fields.go`. For an
+   extension-contributed field, declare the exact key and closed value set in
+   the official registry instead; the host classifies this class through
+   `ExtensionUsageKey`.
 2. **Assign classification** — use the decision tree above to determine the correct classification.
 3. **Assign purpose** — select one or more from: `FeatureInsight`, `BusinessInsight`, `PerformanceAndHealth`.
 4. **Determine hashing** — apply hashing rules above.
@@ -200,11 +204,13 @@ Copy this checklist into your PR description when making telemetry changes.
 ## Telemetry Change Checklist
 
 ### New Fields
-- [ ] Field defined in `fields/fields.go` with correct classification and purpose
+- [ ] Core field defined in `fields/fields.go`, or extension field declared in the official registry
+- [ ] Field has the correct classification and purpose
 - [ ] Field documented in `docs/specs/metrics-audit/telemetry-schema.md`
 - [ ] Hashing applied where required (user-provided values, names, paths)
 - [ ] Measurement fields use correct OTel type (Int64, Float64)
 - [ ] Enum values documented with allowed value set
+- [ ] Extension enum values contain no user-derived or customer content
 
 ### New Events
 - [ ] Event constant defined in `events/events.go`
