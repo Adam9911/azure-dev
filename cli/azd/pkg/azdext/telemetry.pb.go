@@ -24,30 +24,33 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ReportUsageAttributeRequest struct {
+type ReportUsageRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Key must match a telemetry field the extension declared in the registry.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// Value must be in the allowed set the extension declared for key.
-	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// Event name owned by the extension. Recorded as extension.event so
+	// queries can filter an extension's events without parsing attributes.
+	EventName string `protobuf:"bytes,1,opt,name=event_name,json=eventName,proto3" json:"event_name,omitempty"`
+	// Attributes recorded individually on the event, each namespaced by the
+	// host. Values should be low cardinality and must never carry customer
+	// content.
+	Attributes    map[string]string `protobuf:"bytes,2,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReportUsageAttributeRequest) Reset() {
-	*x = ReportUsageAttributeRequest{}
+func (x *ReportUsageRequest) Reset() {
+	*x = ReportUsageRequest{}
 	mi := &file_telemetry_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReportUsageAttributeRequest) String() string {
+func (x *ReportUsageRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReportUsageAttributeRequest) ProtoMessage() {}
+func (*ReportUsageRequest) ProtoMessage() {}
 
-func (x *ReportUsageAttributeRequest) ProtoReflect() protoreflect.Message {
+func (x *ReportUsageRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_telemetry_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -59,47 +62,47 @@ func (x *ReportUsageAttributeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReportUsageAttributeRequest.ProtoReflect.Descriptor instead.
-func (*ReportUsageAttributeRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ReportUsageRequest.ProtoReflect.Descriptor instead.
+func (*ReportUsageRequest) Descriptor() ([]byte, []int) {
 	return file_telemetry_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ReportUsageAttributeRequest) GetKey() string {
+func (x *ReportUsageRequest) GetEventName() string {
 	if x != nil {
-		return x.Key
+		return x.EventName
 	}
 	return ""
 }
 
-func (x *ReportUsageAttributeRequest) GetValue() string {
+func (x *ReportUsageRequest) GetAttributes() map[string]string {
 	if x != nil {
-		return x.Value
+		return x.Attributes
 	}
-	return ""
+	return nil
 }
 
-type ReportUsageAttributeResponse struct {
+type ReportUsageResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Accepted reports whether the host recorded the value.
+	// Accepted reports whether the host recorded the event.
 	Accepted      bool `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReportUsageAttributeResponse) Reset() {
-	*x = ReportUsageAttributeResponse{}
+func (x *ReportUsageResponse) Reset() {
+	*x = ReportUsageResponse{}
 	mi := &file_telemetry_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReportUsageAttributeResponse) String() string {
+func (x *ReportUsageResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReportUsageAttributeResponse) ProtoMessage() {}
+func (*ReportUsageResponse) ProtoMessage() {}
 
-func (x *ReportUsageAttributeResponse) ProtoReflect() protoreflect.Message {
+func (x *ReportUsageResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_telemetry_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -111,12 +114,12 @@ func (x *ReportUsageAttributeResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReportUsageAttributeResponse.ProtoReflect.Descriptor instead.
-func (*ReportUsageAttributeResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ReportUsageResponse.ProtoReflect.Descriptor instead.
+func (*ReportUsageResponse) Descriptor() ([]byte, []int) {
 	return file_telemetry_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ReportUsageAttributeResponse) GetAccepted() bool {
+func (x *ReportUsageResponse) GetAccepted() bool {
 	if x != nil {
 		return x.Accepted
 	}
@@ -127,14 +130,20 @@ var File_telemetry_proto protoreflect.FileDescriptor
 
 const file_telemetry_proto_rawDesc = "" +
 	"\n" +
-	"\x0ftelemetry.proto\x12\x06azdext\"E\n" +
-	"\x1bReportUsageAttributeRequest\x12\x10\n" +
+	"\x0ftelemetry.proto\x12\x06azdext\"\xbe\x01\n" +
+	"\x12ReportUsageRequest\x12\x1d\n" +
+	"\n" +
+	"event_name\x18\x01 \x01(\tR\teventName\x12J\n" +
+	"\n" +
+	"attributes\x18\x02 \x03(\v2*.azdext.ReportUsageRequest.AttributesEntryR\n" +
+	"attributes\x1a=\n" +
+	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\":\n" +
-	"\x1cReportUsageAttributeResponse\x12\x1a\n" +
-	"\baccepted\x18\x01 \x01(\bR\baccepted2u\n" +
-	"\x10TelemetryService\x12a\n" +
-	"\x14ReportUsageAttribute\x12#.azdext.ReportUsageAttributeRequest\x1a$.azdext.ReportUsageAttributeResponseB/Z-github.com/azure/azure-dev/cli/azd/pkg/azdextb\x06proto3"
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"1\n" +
+	"\x13ReportUsageResponse\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted2Z\n" +
+	"\x10TelemetryService\x12F\n" +
+	"\vReportUsage\x12\x1a.azdext.ReportUsageRequest\x1a\x1b.azdext.ReportUsageResponseB/Z-github.com/azure/azure-dev/cli/azd/pkg/azdextb\x06proto3"
 
 var (
 	file_telemetry_proto_rawDescOnce sync.Once
@@ -148,19 +157,21 @@ func file_telemetry_proto_rawDescGZIP() []byte {
 	return file_telemetry_proto_rawDescData
 }
 
-var file_telemetry_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_telemetry_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_telemetry_proto_goTypes = []any{
-	(*ReportUsageAttributeRequest)(nil),  // 0: azdext.ReportUsageAttributeRequest
-	(*ReportUsageAttributeResponse)(nil), // 1: azdext.ReportUsageAttributeResponse
+	(*ReportUsageRequest)(nil),  // 0: azdext.ReportUsageRequest
+	(*ReportUsageResponse)(nil), // 1: azdext.ReportUsageResponse
+	nil,                         // 2: azdext.ReportUsageRequest.AttributesEntry
 }
 var file_telemetry_proto_depIdxs = []int32{
-	0, // 0: azdext.TelemetryService.ReportUsageAttribute:input_type -> azdext.ReportUsageAttributeRequest
-	1, // 1: azdext.TelemetryService.ReportUsageAttribute:output_type -> azdext.ReportUsageAttributeResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: azdext.ReportUsageRequest.attributes:type_name -> azdext.ReportUsageRequest.AttributesEntry
+	0, // 1: azdext.TelemetryService.ReportUsage:input_type -> azdext.ReportUsageRequest
+	1, // 2: azdext.TelemetryService.ReportUsage:output_type -> azdext.ReportUsageResponse
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_telemetry_proto_init() }
@@ -174,7 +185,7 @@ func file_telemetry_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_telemetry_proto_rawDesc), len(file_telemetry_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

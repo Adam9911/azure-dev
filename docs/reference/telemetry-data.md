@@ -74,7 +74,7 @@ Commands follow the pattern `cmd.<command.path>` where spaces become dots.
 | `ext.install` | Extension installation |
 | `ext.upgrade` | Extension upgrade attempt |
 | `ext.promote` | Registry promotion (e.g., dev → main) |
-| `ext.usage` | Usage attribute reported by an extension, limited to the values declared in its official registry entry |
+| `ext.usage` | Usage event reported by an extension through the telemetry service |
 
 ### Agent & Copilot Events
 
@@ -449,11 +449,12 @@ Emitted at provision start by the `microsoft.foundry` provisioning provider (the
 |-----------|------|-------------|
 | `extension.id` | string | Extension identifier |
 | `extension.version` | string | Extension version |
-| `ext.<extension-id>.<field>` | string | One registry-declared enum value on an `ext.usage` span |
+| `extension.event` | string | Extension-chosen event name on an `ext.usage` span |
+| `ext.<key>` | string | One extension-supplied attribute on an `ext.usage` span. The key after the `ext.` prefix and the value are chosen by the extension |
 | `extension.installed` | string[] | List of installed extensions (`id@version`) |
 | `extension.version.from` | string | Version before an upgrade or promotion (`ext.upgrade`, `ext.promote`) |
 | `extension.version.to` | string | Version after an upgrade or promotion (`ext.upgrade`, `ext.promote`) |
-| `extension.source` | string | Registry source used for an upgrade (`ext.upgrade`) |
+| `extension.source` | string | Registry source the extension was installed from (`ext.upgrade`, `ext.usage`) |
 | `extension.source.kind` | string | Kind of `--source` argument: `none`, `registered`, or `location` (`azd extension list`, `show`, `install`, `upgrade`) |
 | `extension.source.from` | string | Registry source before a promotion (`ext.promote`) |
 | `extension.source.to` | string | Registry source after a promotion (`ext.promote`) |
@@ -462,10 +463,13 @@ Emitted at provision start by the `microsoft.foundry` provisioning provider (the
 | `extension.dependency_of` | string | Parent extension ID when an extension is upgraded as a dependency (`ext.upgrade`) |
 | `extension.dependency_upgrade_count` | measurement | Number of dependency extensions upgraded recursively (`ext.upgrade`) |
 
-Each `ext.usage` span contains `extension.id`, `extension.version`, and one
-dynamic `ext.*` field. The exact key and closed value set must be declared in
-the extension's official registry entry. These fixed enum values are classified
-as `SystemMetadata` for `FeatureInsight`.
+Each `ext.usage` span contains `extension.id`, `extension.version`,
+`extension.source`, `extension.event`, and any number of dynamic `ext.*`
+fields. The host writes the identity fields and applies the `ext.` prefix; the
+extension chooses the event name, the key suffixes, and the values. The whole
+class is classified as `SystemMetadata` for `FeatureInsight`. Extension authors
+are responsible for keeping values low cardinality and free of customer
+content, and for having them privacy reviewed with their extension.
 </details>
 
 <details>
@@ -702,7 +706,7 @@ How to find telemetry for a given feature area. Start here if you know the featu
 | **Provisioning (IaC)** | `cmd.provision`, `cmd.up`, `cmd.down`, `arm.deploy.*`, `arm.validate.*` | `infra.provider` (`bicep`/`terraform`/`arm`/`pulumi`/custom; slice of each distinct provider for multi-layer projects) | Provision success, ARM errors, duration |
 | **Authentication** | `cmd.auth.login` | `auth.method` | Auth method usage, failure rates |
 | **CI/CD Pipelines** | `cmd.pipeline.config` | `pipeline.provider` | Pipeline setup adoption |
-| **Extensions** | `ext.run`, `ext.install`, `ext.upgrade`, `ext.usage` | `extension.id`, `extension.version`, `extension.installed`, registry-declared `ext.*` fields | Extension adoption, errors, declared usage modes |
+| **Extensions** | `ext.run`, `ext.install`, `ext.upgrade`, `ext.usage` | `extension.id`, `extension.version`, `extension.installed`, `extension.event`, dynamic `ext.*` fields | Extension adoption, errors, usage events |
 | **MCP** | `mcp.<tool_name>` | `mcp.client.name`, `mcp.client.version` | Tool usage by client |
 | **Agentic (Copilot)** | `copilot.initialize`, `copilot.session` | `copilot.mode`, `copilot.init.model`, `copilot.message.*` | Session counts, token usage |
 | **Agent Troubleshooting** | `agent.troubleshoot` | `agent.fix.attempts` | Auto-fix adoption, retry counts |

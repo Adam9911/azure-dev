@@ -82,40 +82,7 @@
                             "framework-service-provider",
                             "provisioning-provider",
                             "validation-provider",
-                            "metadata",
-                            "telemetry"
-                        ]
-                    }
-                },
-                "telemetry": {
-                    "type": "array",
-                    "description": "Usage attributes this version may report through the telemetry service. Requires the 'telemetry' capability.",
-                    "maxItems": 16,
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "key": {
-                                "type": "string",
-                                "description": "Telemetry attribute name, namespaced as 'ext.<extension id>.<segment>'.",
-                                "maxLength": 128,
-                                "pattern": "^ext\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
-                            },
-                            "allowedValues": {
-                                "type": "array",
-                                "description": "Closed set of values that may be reported for this key. Free-form values are always rejected.",
-                                "minItems": 1,
-                                "maxItems": 32,
-                                "uniqueItems": true,
-                                "items": {
-                                    "type": "string",
-                                    "maxLength": 64,
-                                    "pattern": "^[a-z0-9]([a-z0-9_.-]*[a-z0-9])?$"
-                                }
-                            }
-                        },
-                        "required": [
-                            "key",
-                            "allowedValues"
+                            "metadata"
                         ]
                     }
                 },

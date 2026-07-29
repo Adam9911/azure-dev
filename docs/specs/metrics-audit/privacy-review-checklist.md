@@ -8,8 +8,9 @@ the data classification framework, hashing requirements, and a PR checklist temp
 A privacy review **must** be triggered when any of the following conditions are met:
 
 1. **New telemetry field** — Any new attribute key added to
-   `cli/azd/internal/tracing/fields/fields.go`, emitted through tracing APIs, or
-   added to an extension version's registry `telemetry` declaration.
+   `cli/azd/internal/tracing/fields/fields.go` or emitted through tracing APIs.
+   Extension-supplied `ext.*` attributes are reviewed with the extension that
+   reports them rather than here, but the same rules apply to their content.
 
 2. **New event** — Any new event constant added to `cli/azd/internal/tracing/events/events.go` or new span name
    introduced via `tracing.Start`.
@@ -179,10 +180,11 @@ A new field should **not** be hashed if:
 
 When adding a new telemetry field:
 
-1. **Define the field** in `internal/tracing/fields/fields.go`. For an
-   extension-contributed field, declare the exact key and closed value set in
-   the official registry instead; the host classifies this class through
-   `ExtensionUsageKey`.
+1. **Define the field** in `internal/tracing/fields/fields.go`. Extension
+   telemetry is different: an extension supplies its own keys and values at
+   runtime, and the host classifies the whole `ext.*` class through
+   `ExtensionUsageAttribute`. The extension author owns each value's content
+   and must apply this checklist to it during their own review.
 2. **Assign classification** — use the decision tree above to determine the correct classification.
 3. **Assign purpose** — select one or more from: `FeatureInsight`, `BusinessInsight`, `PerformanceAndHealth`.
 4. **Determine hashing** — apply hashing rules above.

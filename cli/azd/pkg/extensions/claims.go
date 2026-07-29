@@ -14,10 +14,6 @@ import (
 type ExtensionClaims struct {
 	jwt.RegisteredClaims
 	Capabilities []CapabilityType `json:"cap,omitempty"`
-	// Source is the install source recorded for the extension. The
-	// host signs it so an extension cannot change it per request; it
-	// reflects local install state, not verified provenance.
-	Source string `json:"src,omitempty"`
 }
 
 // extensionClaimsKeyType is the context key for storing validated extension claims.

@@ -32,7 +32,6 @@ var ValidCapabilities = []CapabilityType{
 	MetadataCapability,
 	ProvisioningProviderCapability,
 	ValidationProviderCapability,
-	TelemetryCapability,
 }
 
 // validChecksumAlgorithms defines the supported checksum algorithms.
@@ -286,17 +285,6 @@ func validateVersion(
 			result.addError(fmt.Sprintf("%s: unknown capability '%s' (valid: %s)",
 				prefix, cap, strings.Join(capabilityStrings(), ", ")))
 		}
-	}
-
-	// Validate telemetry declarations. Every field an extension may report at
-	// runtime is declared here and reviewed as part of the registry change.
-	for _, issue := range ValidateTelemetryDeclarations(extensionId, ver.Telemetry) {
-		result.addError(fmt.Sprintf("%s: %s", prefix, issue))
-	}
-
-	if len(ver.Telemetry) > 0 && !slices.Contains(ver.Capabilities, TelemetryCapability) {
-		result.addError(fmt.Sprintf("%s: telemetry declarations require the '%s' capability",
-			prefix, TelemetryCapability))
 	}
 
 	// Enforce that each version has at least one artifact or dependency

@@ -22,21 +22,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TelemetryService_ReportUsageAttribute_FullMethodName = "/azdext.TelemetryService/ReportUsageAttribute"
+	TelemetryService_ReportUsage_FullMethodName = "/azdext.TelemetryService/ReportUsage"
 )
 
 // TelemetryServiceClient is the client API for TelemetryService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// TelemetryService accepts usage attribute values from authenticated
-// extensions. Every key and value must appear in the telemetry declaration
-// the extension published in the official azd registry, which is where those
-// fields are reviewed. The host decides which telemetry span a value lands on
-// and owns classification, purpose, hashing, and aggregation.
+// TelemetryService accepts usage events from authenticated extensions. The
+// extension owns the event name and the attribute values; the host owns the
+// span, stamps the calling extension's identity onto it, and namespaces every
+// caller-supplied attribute so it cannot collide with a host field.
 type TelemetryServiceClient interface {
-	// ReportUsageAttribute reports one declared usage attribute value.
-	ReportUsageAttribute(ctx context.Context, in *ReportUsageAttributeRequest, opts ...grpc.CallOption) (*ReportUsageAttributeResponse, error)
+	// ReportUsage records one usage event for the calling extension.
+	ReportUsage(ctx context.Context, in *ReportUsageRequest, opts ...grpc.CallOption) (*ReportUsageResponse, error)
 }
 
 type telemetryServiceClient struct {
@@ -47,10 +46,10 @@ func NewTelemetryServiceClient(cc grpc.ClientConnInterface) TelemetryServiceClie
 	return &telemetryServiceClient{cc}
 }
 
-func (c *telemetryServiceClient) ReportUsageAttribute(ctx context.Context, in *ReportUsageAttributeRequest, opts ...grpc.CallOption) (*ReportUsageAttributeResponse, error) {
+func (c *telemetryServiceClient) ReportUsage(ctx context.Context, in *ReportUsageRequest, opts ...grpc.CallOption) (*ReportUsageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReportUsageAttributeResponse)
-	err := c.cc.Invoke(ctx, TelemetryService_ReportUsageAttribute_FullMethodName, in, out, cOpts...)
+	out := new(ReportUsageResponse)
+	err := c.cc.Invoke(ctx, TelemetryService_ReportUsage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,14 +60,13 @@ func (c *telemetryServiceClient) ReportUsageAttribute(ctx context.Context, in *R
 // All implementations must embed UnimplementedTelemetryServiceServer
 // for forward compatibility.
 //
-// TelemetryService accepts usage attribute values from authenticated
-// extensions. Every key and value must appear in the telemetry declaration
-// the extension published in the official azd registry, which is where those
-// fields are reviewed. The host decides which telemetry span a value lands on
-// and owns classification, purpose, hashing, and aggregation.
+// TelemetryService accepts usage events from authenticated extensions. The
+// extension owns the event name and the attribute values; the host owns the
+// span, stamps the calling extension's identity onto it, and namespaces every
+// caller-supplied attribute so it cannot collide with a host field.
 type TelemetryServiceServer interface {
-	// ReportUsageAttribute reports one declared usage attribute value.
-	ReportUsageAttribute(context.Context, *ReportUsageAttributeRequest) (*ReportUsageAttributeResponse, error)
+	// ReportUsage records one usage event for the calling extension.
+	ReportUsage(context.Context, *ReportUsageRequest) (*ReportUsageResponse, error)
 	mustEmbedUnimplementedTelemetryServiceServer()
 }
 
@@ -79,8 +77,8 @@ type TelemetryServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTelemetryServiceServer struct{}
 
-func (UnimplementedTelemetryServiceServer) ReportUsageAttribute(context.Context, *ReportUsageAttributeRequest) (*ReportUsageAttributeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReportUsageAttribute not implemented")
+func (UnimplementedTelemetryServiceServer) ReportUsage(context.Context, *ReportUsageRequest) (*ReportUsageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReportUsage not implemented")
 }
 func (UnimplementedTelemetryServiceServer) mustEmbedUnimplementedTelemetryServiceServer() {}
 func (UnimplementedTelemetryServiceServer) testEmbeddedByValue()                          {}
@@ -103,20 +101,20 @@ func RegisterTelemetryServiceServer(s grpc.ServiceRegistrar, srv TelemetryServic
 	s.RegisterService(&TelemetryService_ServiceDesc, srv)
 }
 
-func _TelemetryService_ReportUsageAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReportUsageAttributeRequest)
+func _TelemetryService_ReportUsage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReportUsageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TelemetryServiceServer).ReportUsageAttribute(ctx, in)
+		return srv.(TelemetryServiceServer).ReportUsage(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TelemetryService_ReportUsageAttribute_FullMethodName,
+		FullMethod: TelemetryService_ReportUsage_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TelemetryServiceServer).ReportUsageAttribute(ctx, req.(*ReportUsageAttributeRequest))
+		return srv.(TelemetryServiceServer).ReportUsage(ctx, req.(*ReportUsageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -129,8 +127,8 @@ var TelemetryService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*TelemetryServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ReportUsageAttribute",
-			Handler:    _TelemetryService_ReportUsageAttribute_Handler,
+			MethodName: "ReportUsage",
+			Handler:    _TelemetryService_ReportUsage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

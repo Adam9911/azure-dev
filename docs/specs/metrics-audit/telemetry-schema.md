@@ -19,7 +19,7 @@ OpenTelemetry span name or event name.
 | `ExtensionInstallEvent` | `ext.install` | Extension install/upgrade event |
 | `ExtensionUpgradeEvent` | `ext.upgrade` | Single extension upgrade attempt |
 | `ExtensionPromoteEvent` | `ext.promote` | Extension registry promotion (e.g., dev → main) |
-| `ExtensionUsageEvent` | `ext.usage` | One usage attribute reported by an extension through the telemetry service |
+| `ExtensionUsageEvent` | `ext.usage` | One usage event reported by an extension through the telemetry service |
 | `CopilotInitializeEvent` | `copilot.initialize` | Copilot initialization event |
 | `CopilotSessionEvent` | `copilot.session` | Copilot session lifecycle event |
 | `ProvisionValidationEvent` | `validation.provision` | Local provision validation outcome |
@@ -218,10 +218,10 @@ not emitted by azd spans.
 
 #### Extension-contributed usage attributes
 
-Extensions do not have individual fields listed in this document. Instead they
-declare the attributes they may report in their entry in the official azd
-extension registry, and `azd` records each accepted value on an `ext.usage`
-span alongside `extension.id` and `extension.version`.
+Extensions do not have individual fields listed in this document. An extension
+reports a named event with an arbitrary attribute map, and `azd` records it on
+an `ext.usage` span alongside `extension.id`, `extension.version`,
+`extension.source`, and `extension.event`.
 
 `azd` core carries no product-specific telemetry semantics for these fields.
 The following rules are enforced by the host and are what this schema
@@ -229,20 +229,20 @@ guarantees about the whole class:
 
 | Rule | Enforcement |
 |------|-------------|
-| Key namespace | Must be `ext.<extension id>.<segment>[.<segment>…]`, lowercase alphanumeric and hyphens |
-| Values | Must be one of the closed set declared for that key in the registry; free-form values are always rejected |
-| Value charset | Lowercase alphanumeric with `_`, `-`, and `.`; common URL and path separators are excluded as defense in depth, while exact values remain privacy-reviewed |
+| Key namespace | Every caller-supplied key is prefixed with `ext.` by the host, so it can never overwrite a host-owned attribute |
+| Size | At most 32 attributes per event; event name and keys at most 128 characters; values at most 512 characters |
+| Values | Not enumerated or pattern-checked. The extension author owns what a value means and is responsible for keeping it low cardinality and free of customer content |
 | Classification | Always `SystemMetadata` |
 | Purpose | Always `FeatureInsight` |
-| Trust | The `telemetry` capability and the recorded install source are read from host-signed claims, so an extension cannot raise either on the request itself |
-| Review | Adding or changing a declared field is a change to the official registry in this repository and is reviewed like any other telemetry change |
+| Trust | `extension.id`, `extension.version`, and `extension.source` are derived from host-signed claims and the installed record, never from the request, so an extension cannot assert which extension it is |
+| Review | Extension telemetry is reviewed with the extension, under the same documentation, classification, and privacy rules as core fields |
 
 Because `ext.usage` spans share the command's trace, they join the originating
 command in Kusto on `operation_Id`. See
-[ADR-001](../../architecture/adr-001-extension-telemetry-declarations.md) for
+[ADR-001](../../architecture/adr-001-extension-telemetry-events.md) for
 the design rationale and
-[Extension Telemetry Fields](../../../cli/azd/docs/extensions/extension-telemetry-fields.md)
-for the author-facing declaration rules.
+[Extension Telemetry](../../../cli/azd/docs/extensions/extension-telemetry.md)
+for the author-facing rules.
 
 #### What this class does and does not guarantee
 

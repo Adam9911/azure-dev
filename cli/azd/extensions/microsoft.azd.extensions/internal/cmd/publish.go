@@ -474,10 +474,9 @@ func addOrUpdateExtension(
 				Dependencies:       extensionMetadata.Dependencies,
 				Providers:          extensionMetadata.Providers,
 				Artifacts:          artifacts,
-				// Telemetry declarations and MCP config are authored
-				// directly in the registry and reviewed there, so carry
-				// them forward instead of dropping them on republish.
-				Telemetry: v.Telemetry,
+				// MCP config is authored directly in the registry and
+				// reviewed there, so carry it forward instead of
+				// dropping it on republish.
 				McpConfig: v.McpConfig,
 			}
 

@@ -35,20 +35,14 @@ import (
 // Test_Server_Start validates the start and stop flows of the gRPC server,
 // and confirms the expected behavior for authenticated and unauthenticated requests.
 func Test_Server_Start(t *testing.T) {
-	// The reporting extension is installed from the official registry and
-	// declares one bounded field, which is what the host validates against.
+	// The reporting extension is installed and resolvable, which is how the
+	// host stamps identity onto the span the extension can never supply.
 	reportingExtension := &extensions.Extension{
 		Id:      "azd.internal.telemetry",
 		Version: "1.0.0",
 		Source:  extensions.MainRegistryName,
 		Capabilities: []extensions.CapabilityType{
-			extensions.TelemetryCapability,
-		},
-		Telemetry: []extensions.TelemetryFieldDeclaration{
-			{
-				Key:           "ext.azd.internal.telemetry.deploy.mode",
-				AllowedValues: []string{"code", "container"},
-			},
+			extensions.CustomCommandCapability,
 		},
 		Namespace: "test",
 	}
@@ -147,15 +141,15 @@ func Test_Server_Start(t *testing.T) {
 		client, err := azdext.NewAzdClient(azdext.WithAddress(serverInfo.Address))
 		require.NoError(t, err)
 
-		resp, err := client.Telemetry().ReportUsageAttribute(ctx, &azdext.ReportUsageAttributeRequest{
-			Key:   "ext.azd.internal.telemetry.deploy.mode",
-			Value: "code",
+		resp, err := client.Telemetry().ReportUsage(ctx, &azdext.ReportUsageRequest{
+			EventName:  "deploy.completed",
+			Attributes: map[string]string{"deploy.mode": "code"},
 		})
 		require.NoError(t, err)
 		require.True(t, resp.Accepted)
 	})
 
-	t.Run("TelemetryUndeclaredValue", func(t *testing.T) {
+	t.Run("TelemetryRejectsMissingEventName", func(t *testing.T) {
 		accessToken, err := GenerateExtensionToken(reportingExtension, serverInfo)
 		require.NoError(t, err)
 
@@ -163,17 +157,17 @@ func Test_Server_Start(t *testing.T) {
 		client, err := azdext.NewAzdClient(azdext.WithAddress(serverInfo.Address))
 		require.NoError(t, err)
 
-		_, err = client.Telemetry().ReportUsageAttribute(ctx, &azdext.ReportUsageAttributeRequest{
-			Key:   "ext.azd.internal.telemetry.deploy.mode",
-			Value: "byo_image",
+		_, err = client.Telemetry().ReportUsage(ctx, &azdext.ReportUsageRequest{
+			Attributes: map[string]string{"deploy.mode": "code"},
 		})
 		st, ok := status.FromError(err)
 		require.True(t, ok)
 		require.Equal(t, codes.InvalidArgument, st.Code())
 	})
 
-	t.Run("TelemetryMissingCapability", func(t *testing.T) {
-		// The base extension only declares CustomCommandCapability.
+	t.Run("TelemetryRejectsUninstalledExtension", func(t *testing.T) {
+		// The base extension is not the record the lookup resolves, so the
+		// host has no identity to stamp and must refuse.
 		accessToken, err := GenerateExtensionToken(extension, serverInfo)
 		require.NoError(t, err)
 
@@ -181,9 +175,8 @@ func Test_Server_Start(t *testing.T) {
 		client, err := azdext.NewAzdClient(azdext.WithAddress(serverInfo.Address))
 		require.NoError(t, err)
 
-		_, err = client.Telemetry().ReportUsageAttribute(ctx, &azdext.ReportUsageAttributeRequest{
-			Key:   "ext.azd.internal.telemetry.deploy.mode",
-			Value: "code",
+		_, err = client.Telemetry().ReportUsage(ctx, &azdext.ReportUsageRequest{
+			EventName: "deploy.completed",
 		})
 		st, ok := status.FromError(err)
 		require.True(t, ok)
@@ -194,12 +187,9 @@ func Test_Server_Start(t *testing.T) {
 		client, err := azdext.NewAzdClient(azdext.WithAddress(serverInfo.Address))
 		require.NoError(t, err)
 
-		_, err = client.Telemetry().ReportUsageAttribute(
+		_, err = client.Telemetry().ReportUsage(
 			t.Context(),
-			&azdext.ReportUsageAttributeRequest{
-				Key:   "ext.azd.internal.telemetry.deploy.mode",
-				Value: "code",
-			},
+			&azdext.ReportUsageRequest{EventName: "deploy.completed"},
 		)
 		st, ok := status.FromError(err)
 		require.True(t, ok)

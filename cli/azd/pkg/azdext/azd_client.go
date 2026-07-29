@@ -296,8 +296,8 @@ func (c *AzdClient) Validation() ValidationServiceClient {
 	return c.validationClient
 }
 
-// Telemetry returns the telemetry service client used to contribute
-// host-validated command usage attributes.
+// Telemetry returns the telemetry service client used to report extension
+// usage events.
 //
 // A fresh client is returned on each call rather than caching it on the
 // AzdClient struct. Service target providers can deploy services concurrently,

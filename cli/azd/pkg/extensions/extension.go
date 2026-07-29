@@ -27,9 +27,6 @@ type Extension struct {
 	Providers         []Provider       `json:"providers,omitempty"`
 	McpConfig         *McpConfig       `json:"mcp,omitempty"`
 	LastUpdateWarning string           `json:"lastUpdateWarning,omitempty"`
-	// Telemetry are the usage attributes this version declared in the registry
-	// it was installed from. azd validates every reported value against it.
-	Telemetry []TelemetryFieldDeclaration `json:"telemetry,omitempty"`
 
 	stdin  *bytes.Buffer
 	stdout *output.DynamicMultiWriter

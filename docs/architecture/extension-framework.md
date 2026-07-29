@@ -58,7 +58,6 @@ Extensions declare their capabilities in `extension.yaml`:
 | `service-target-provider` | Add deployment support for new hosting targets |
 | `provisioning-provider` | Add custom infrastructure provisioning support |
 | `metadata` | Provide metadata about commands and capabilities |
-| `telemetry` | Report usage attributes declared in the extension's registry entry |
 
 ## Available gRPC Services
 

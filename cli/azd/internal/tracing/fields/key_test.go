@@ -29,10 +29,24 @@ func TestErrorKey(t *testing.T) {
 	}
 }
 
-func TestExtensionUsageKey(t *testing.T) {
-	key := ExtensionUsageKey("ext.contoso.tools.deploy.mode")
+func TestExtensionUsageAttribute(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		want attribute.Key
+	}{
+		{"PrependsPrefix", "deploy.mode", "ext.deploy.mode"},
+		{"PrependsPrefixToHostFieldName", "extension.id", "ext.extension.id"},
+		{"PrependsPrefixToAlreadyPrefixedKey", "ext.mode", "ext.ext.mode"},
+	}
 
-	require.Equal(t, attribute.Key("ext.contoso.tools.deploy.mode"), key.Key)
-	require.Equal(t, SystemMetadata, key.Classification)
-	require.Equal(t, FeatureInsight, key.Purpose)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key := ExtensionUsageAttribute(tt.key)
+
+			require.Equal(t, tt.want, key.Key)
+			require.Equal(t, SystemMetadata, key.Classification)
+			require.Equal(t, FeatureInsight, key.Purpose)
+		})
+	}
 }

@@ -57,10 +57,6 @@ const (
 	// Validation provider enables extensions to contribute validation checks
 	// to azd's validation pipeline (e.g. provision checks during provisioning)
 	ValidationProviderCapability CapabilityType = "validation-provider"
-	// Telemetry enables extensions to report the usage attributes they declare
-	// in the official registry. azd validates every reported key and value
-	// against that declaration.
-	TelemetryCapability CapabilityType = "telemetry"
 )
 
 type ProviderType string
@@ -143,9 +139,6 @@ type ExtensionVersion struct {
 	EntryPoint string `json:"entryPoint,omitempty"`
 	// McpConfig is the MCP server configuration for this extension version
 	McpConfig *McpConfig `json:"mcp,omitempty"`
-	// Telemetry declares the usage attributes this version may report through
-	// the telemetry service. Requires the telemetry capability.
-	Telemetry []TelemetryFieldDeclaration `json:"telemetry,omitempty"`
 }
 
 // ExtensionArtifact represents the artifact information of an extension

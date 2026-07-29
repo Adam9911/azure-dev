@@ -23,7 +23,6 @@ func GenerateExtensionToken(extension *extensions.Extension, serverInfo *ServerI
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 1)),
 		},
 		Capabilities: extension.Capabilities,
-		Source:       extension.Source,
 	}
 
 	jwtToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(serverInfo.SigningKey)

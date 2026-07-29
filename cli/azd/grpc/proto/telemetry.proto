@@ -6,26 +6,27 @@ package azdext;
 
 option go_package = "github.com/azure/azure-dev/cli/azd/pkg/azdext";
 
-// TelemetryService accepts usage attribute values from authenticated
-// extensions. Every key and value must appear in the telemetry declaration
-// the extension published in the official azd registry, which is where those
-// fields are reviewed. The host decides which telemetry span a value lands on
-// and owns classification, purpose, hashing, and aggregation.
+// TelemetryService accepts usage events from authenticated extensions. The
+// extension owns the event name and the attribute values; the host owns the
+// span, stamps the calling extension's identity onto it, and namespaces every
+// caller-supplied attribute so it cannot collide with a host field.
 service TelemetryService {
-  // ReportUsageAttribute reports one declared usage attribute value.
-  rpc ReportUsageAttribute(ReportUsageAttributeRequest)
-      returns (ReportUsageAttributeResponse);
+  // ReportUsage records one usage event for the calling extension.
+  rpc ReportUsage(ReportUsageRequest) returns (ReportUsageResponse);
 }
 
-message ReportUsageAttributeRequest {
-  // Key must match a telemetry field the extension declared in the registry.
-  string key = 1;
+message ReportUsageRequest {
+  // Event name owned by the extension. Recorded as extension.event so
+  // queries can filter an extension's events without parsing attributes.
+  string event_name = 1;
 
-  // Value must be in the allowed set the extension declared for key.
-  string value = 2;
+  // Attributes recorded individually on the event, each namespaced by the
+  // host. Values should be low cardinality and must never carry customer
+  // content.
+  map<string, string> attributes = 2;
 }
 
-message ReportUsageAttributeResponse {
-  // Accepted reports whether the host recorded the value.
+message ReportUsageResponse {
+  // Accepted reports whether the host recorded the event.
   bool accepted = 1;
 }

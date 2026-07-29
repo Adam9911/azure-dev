@@ -62,11 +62,11 @@ A JSON manifest that lists available extensions, their versions, capabilities, a
 
 ### Extension Capabilities
 
-The set of features an extension provides. Valid capabilities are: `custom-commands`, `lifecycle-events`, `mcp-server`, `service-target-provider`, `framework-service-provider`, `provisioning-provider`, `validation-provider`, `metadata`, and `telemetry`. See [Extension Framework](../architecture/extension-framework.md) for details.
+The set of features an extension provides. Valid capabilities are: `custom-commands`, `lifecycle-events`, `mcp-server`, `service-target-provider`, `framework-service-provider`, `provisioning-provider`, `validation-provider`, and `metadata`. Capabilities describe customer-facing features azd calls into, not host services an extension consumes — telemetry, for example, is available to every extension without a capability. See [Extension Framework](../architecture/extension-framework.md) for details.
 
-### Telemetry Declaration
+### Extension Usage Event
 
-The `telemetry` array in an extension's registry entry, listing each usage attribute key the extension may report and the closed set of values allowed for it. `azd` core owns no product-specific telemetry fields; it only enforces what the registry declares. See [ADR-001](../architecture/adr-001-extension-telemetry-declarations.md).
+A named event an extension reports through `TelemetryService.ReportUsage`, carrying an event name and an arbitrary `map<string, string>` of attributes. `azd` core stamps the extension's identity, prefixes every caller-supplied key with `ext.`, and bounds size only; the extension author owns what the values mean. See [ADR-001](../architecture/adr-001-extension-telemetry-events.md).
 
 ### Provisioning Provider
 

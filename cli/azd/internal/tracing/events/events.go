@@ -32,9 +32,9 @@ const (
 	ExtensionUpgradeEvent = "ext.upgrade"
 	// ExtensionPromoteEvent tracks a registry promotion (e.g., dev → main).
 	ExtensionPromoteEvent = "ext.promote"
-	// ExtensionUsageEvent carries one usage attribute an extension reported
-	// through the telemetry service. The attribute key and value come from
-	// the extension's registry declaration, validated by the host.
+	// ExtensionUsageEvent carries one usage event an extension reported
+	// through the telemetry service. The host stamps the extension's
+	// identity and namespaces every attribute the extension supplied.
 	ExtensionUsageEvent = "ext.usage"
 )
 

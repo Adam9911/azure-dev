@@ -1104,7 +1104,9 @@ Extensions can declare the following capabilities in their manifest:
 - **`provisioning-provider`**: Provide a custom infrastructure provisioning experience (alternative to Bicep / Terraform)
 - **`validation-provider`**: Contribute validation checks to azd's provision validation and future validation pipelines
 - **`metadata`**: Provide comprehensive metadata about commands and configuration schemas
-- **`telemetry`**: Report usage attributes declared in the extension's official registry entry (see [Extension Telemetry Fields](./extension-telemetry-fields.md))
+
+Telemetry is not a capability. Any extension can report usage events through
+the telemetry gRPC service — see [Extension Telemetry](./extension-telemetry.md).
 
 #### Complete Extension Manifest Example
 

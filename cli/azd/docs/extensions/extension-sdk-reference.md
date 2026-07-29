@@ -525,41 +525,34 @@ Always call `defer client.Close()` after creation.
 
 #### TelemetryService
 
-`Telemetry().ReportUsageAttribute(ctx, &azdext.ReportUsageAttributeRequest{Key, Value})`
-lets an authenticated extension report one usage attribute value. The
-extension declares the key and its closed value set in its entry in the
-official azd registry; `azd` core owns no product-specific fields, so adding a
-new field is a registry change rather than a core release.
+`Telemetry().ReportUsage(ctx, &azdext.ReportUsageRequest{EventName, Attributes})`
+lets an authenticated extension report a named usage event with an arbitrary
+`map[string]string` of attributes. There is no capability to declare and
+nothing to register in the registry — telemetry is a service `azd` offers to
+every extension.
 
-The host validates every call and fails closed. It requires the extension to
-be installed from the official `azd` registry, to carry the `telemetry`
-capability, and to have declared both the key and the exact value. Accepted
-values are recorded on a dedicated `ext.usage` span that shares the command's
-trace, so downstream queries join it to the originating command on
-`operation_Id`. Extensions cannot choose the span, classification, purpose,
+The host writes `extension.id`, `extension.version`, and `extension.source`
+from the signed claims and the installed record, and `extension.event` from the
+caller's event name, so an extension cannot assert which extension it is. Every
+caller-supplied key is prefixed with `ext.` and can never overwrite a host
+field. Accepted events are recorded on a dedicated `ext.usage` span that shares
+the command's trace, so downstream queries join it to the originating command
+on `operation_Id`. Extensions cannot choose the span, classification, purpose,
 hashing, or aggregation.
 
-Declare fields in the registry entry alongside the capability:
-
-```json
-{
-  "version": "1.0.0",
-  "capabilities": ["telemetry"],
-  "telemetry": [
-    {
-      "key": "ext.contoso.tools.deploy.mode",
-      "allowedValues": ["code", "container"]
-    }
-  ]
-}
+```go
+_, err := client.Telemetry().ReportUsage(ctx, &azdext.ReportUsageRequest{
+    EventName:  "deploy.completed",
+    Attributes: map[string]string{"deploy.mode": "container"},
+})
 ```
 
-Keys must be namespaced as `ext.<extension id>.<segment>`, and values are
-limited to lowercase alphanumerics with `_`, `-`, and `.`. The charset excludes
-common URL and path separators as defense in depth; the registry privacy review
-must still verify every exact allowed value. See
-[Extension Telemetry Fields](./extension-telemetry-fields.md) for the full
-declaration rules and review process.
+The host bounds shape only: at most 32 attributes, event name and keys at most
+128 characters, and values at most 512 characters. It does not inspect what a
+value means, so keeping values low cardinality and free of customer content is
+the extension author's responsibility. See
+[Extension Telemetry](./extension-telemetry.md) for the full rules and review
+process.
 
 The call is best-effort. An older azd host returns `Unimplemented`. Treat any
 failure as a no-op and never let it change command behavior. Report a value as
