@@ -1,5 +1,7 @@
 # Extension Telemetry
 
+<!-- cspell:ignore tostring -->
+
 This guide is for extension authors who need `azd` to record a usage signal on
 their behalf — for example, which deployment mode a user picked.
 
