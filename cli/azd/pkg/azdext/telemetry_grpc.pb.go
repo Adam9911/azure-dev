@@ -33,6 +33,9 @@ const (
 // extension owns the event name and the attribute values; the host owns the
 // span, stamps the calling extension's identity onto it, and namespaces every
 // caller-supplied attribute so it cannot collide with a host field.
+//
+// Values are not reviewed at runtime, so the host only records events from
+// extensions installed from the official azd registry.
 type TelemetryServiceClient interface {
 	// ReportUsage records one usage event for the calling extension.
 	ReportUsage(ctx context.Context, in *ReportUsageRequest, opts ...grpc.CallOption) (*ReportUsageResponse, error)
@@ -64,6 +67,9 @@ func (c *telemetryServiceClient) ReportUsage(ctx context.Context, in *ReportUsag
 // extension owns the event name and the attribute values; the host owns the
 // span, stamps the calling extension's identity onto it, and namespaces every
 // caller-supplied attribute so it cannot collide with a host field.
+//
+// Values are not reviewed at runtime, so the host only records events from
+// extensions installed from the official azd registry.
 type TelemetryServiceServer interface {
 	// ReportUsage records one usage event for the calling extension.
 	ReportUsage(context.Context, *ReportUsageRequest) (*ReportUsageResponse, error)

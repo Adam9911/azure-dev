@@ -529,7 +529,7 @@ Always call `defer client.Close()` after creation.
 lets an authenticated extension report a named usage event with an arbitrary
 `map[string]string` of attributes. There is no capability to declare and
 nothing to register in the registry — telemetry is a service `azd` offers to
-every extension.
+extensions installed from the official `azd` registry.
 
 The host writes `extension.id`, `extension.version`, and `extension.source`
 from the signed claims and the installed record, and `extension.event` from the
@@ -539,6 +539,12 @@ field. Accepted events are recorded on a dedicated `ext.usage` span that shares
 the command's trace, so downstream queries join it to the originating command
 on `operation_Id`. Extensions cannot choose the span, classification, purpose,
 hashing, or aggregation.
+
+Two outcomes are not errors: a report from an extension installed from any
+other source, and a report past the limit of 100 recorded events per `azd`
+invocation. Both return a successful response with `Accepted` set to `false`,
+so the same code path runs during local development and in production. Run
+`azd --debug` to see which applied.
 
 ```go
 _, err := client.Telemetry().ReportUsage(ctx, &azdext.ReportUsageRequest{

@@ -11,6 +11,8 @@ A privacy review **must** be triggered when any of the following conditions are 
    `cli/azd/internal/tracing/fields/fields.go` or emitted through tracing APIs.
    Extension-supplied `ext.*` attributes are reviewed with the extension that
    reports them rather than here, but the same rules apply to their content.
+   Only extensions admitted to the official `azd` registry can record these
+   attributes, so that admission is where the review has to happen.
 
 2. **New event** — Any new event constant added to `cli/azd/internal/tracing/events/events.go` or new span name
    introduced via `tracing.Start`.
@@ -184,7 +186,9 @@ When adding a new telemetry field:
    telemetry is different: an extension supplies its own keys and values at
    runtime, and the host classifies the whole `ext.*` class through
    `ExtensionUsageAttribute`. The extension author owns each value's content
-   and must apply this checklist to it during their own review.
+   and must apply this checklist to it during their own review, which the host
+   enforces by recording `ext.usage` only for extensions installed from the
+   official `azd` registry.
 2. **Assign classification** — use the decision tree above to determine the correct classification.
 3. **Assign purpose** — select one or more from: `FeatureInsight`, `BusinessInsight`, `PerformanceAndHealth`.
 4. **Determine hashing** — apply hashing rules above.
@@ -206,7 +210,7 @@ Copy this checklist into your PR description when making telemetry changes.
 ## Telemetry Change Checklist
 
 ### New Fields
-- [ ] Core field defined in `fields/fields.go`, or extension field declared in the official registry
+- [ ] Core field defined in `fields/fields.go`; extension-supplied `ext.*` values are covered by the extension's own review instead
 - [ ] Field has the correct classification and purpose
 - [ ] Field documented in `docs/specs/metrics-audit/telemetry-schema.md`
 - [ ] Hashing applied where required (user-provided values, names, paths)

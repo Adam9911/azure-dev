@@ -1195,7 +1195,7 @@ var (
 		Purpose:        FeatureInsight,
 	}
 	// ExtensionSource is the registry source the extension was
-	// installed from. Recorded as a dimension, never used as a gate.
+	// installed from. On ext.usage it is also what gates recording.
 	ExtensionSource = AttributeKey{
 		Key:            attribute.Key("extension.source"),
 		Classification: SystemMetadata,

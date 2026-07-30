@@ -6,6 +6,9 @@ package grpcserver
 import (
 	"context"
 	"errors"
+	"log"
+	"strings"
+	"sync/atomic"
 
 	"github.com/azure/azure-dev/cli/azd/internal/tracing"
 	"github.com/azure/azure-dev/cli/azd/internal/tracing/events"
@@ -17,9 +20,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Bounds on a reported usage event. These are shape limits, not content
-// review: the host does not judge what an attribute means, only that it
-// cannot corrupt the shared telemetry pipeline.
+// Bounds on reported usage. These are shape and volume limits, not
+// content review: the host does not judge what an attribute means, only
+// that it cannot corrupt the shared telemetry pipeline.
 const (
 	// maxUsageAttributes caps attributes per event. The exporter enforces
 	// no such limit, so this guards against a loop inflating span size.
@@ -37,6 +40,10 @@ const (
 	// policy: a payload dump fails loudly here instead of quietly landing
 	// in the pipeline.
 	maxUsageValueLength = 512
+	// maxUsageEventsPerInvocation caps recorded events for one azd
+	// process. Every other bound is per event and says nothing about
+	// how many arrive, and ReportUsage can be called in a loop.
+	maxUsageEventsPerInvocation = 100
 )
 
 // installedExtensionLookup resolves the installed extension record for a
@@ -49,6 +56,9 @@ type installedExtensionLookup interface {
 type telemetryService struct {
 	azdext.UnimplementedTelemetryServiceServer
 	extensions installedExtensionLookup
+	// recorded counts the events kept for this azd process. Service
+	// target providers deploy concurrently, so it has to be atomic.
+	recorded atomic.Int64
 }
 
 // NewTelemetryService creates the telemetry gRPC service. The extension
@@ -65,14 +75,19 @@ func newTelemetryService(lookup installedExtensionLookup) *telemetryService {
 }
 
 // ReportUsage records one usage event for the calling extension. The
-// extension supplies only an event name and attribute map; the host derives
-// identity from the signed claims and the installed record, so a caller
-// cannot assert which extension it is. Install source is recorded as a
-// dimension rather than a gate, matching ext.run and ext.install.
+// extension supplies only an event name and attribute map; the host
+// stamps identity from the signed claims and the installed record, so
+// a caller cannot assert which extension it is.
 //
-// It fails closed on the whole request: exceeding any bound records nothing,
-// because dropping the offending attribute alone would ship data that looks
-// complete but is not. Rejected caller text is never echoed back.
+// Two outcomes are deliberately not errors. An extension outside the
+// official registry, and one past the per-invocation event budget, get
+// Accepted: false and no span. Reporting is best effort, so an author
+// runs the same code path whether or not the event was kept.
+//
+// A malformed request is an error, and fails closed on the whole
+// request: exceeding any bound records nothing, because dropping the
+// offending attribute alone would ship data that looks complete but is
+// not. Rejected caller text is never echoed back.
 func (s *telemetryService) ReportUsage(
 	ctx context.Context,
 	req *azdext.ReportUsageRequest,
@@ -101,6 +116,25 @@ func (s *telemetryService) ReportUsage(
 		return nil, status.Error(codes.Internal, "failed to verify installed extension")
 	}
 
+	// Only extensions admitted to the official azd registry report
+	// usage. Values are authored by the extension and are never
+	// reviewed at runtime, so registry admission is what keeps
+	// unchecked content out of azd's shared pipeline.
+	//
+	// This is a source check, not proof of first party. Registry
+	// admission is the durable control and this only reflects it, so a
+	// future third-party entry in the official registry would report
+	// too. A blank source is not treated as official: the upgrade
+	// resolver defaults it to the main registry, but a gate cannot
+	// inherit that leniency.
+	if !strings.EqualFold(extension.Source, extensions.MainRegistryName) {
+		log.Printf(
+			"telemetry: dropping usage event from %s installed from source %q",
+			extension.Id, extension.Source)
+
+		return &azdext.ReportUsageResponse{Accepted: false}, nil
+	}
+
 	attributes := []attribute.KeyValue{
 		fields.ExtensionId.String(extension.Id),
 		fields.ExtensionVersion.String(extension.Version),
@@ -120,6 +154,19 @@ func (s *telemetryService) ReportUsage(
 		}
 
 		attributes = append(attributes, fields.ExtensionUsageAttribute(key).String(value))
+	}
+
+	// Budget is spent only by events that would otherwise be recorded,
+	// so a malformed call cannot starve a well-behaved one. The count
+	// covers the whole azd process because the service is registered as
+	// a container singleton, which makes it a per-invocation budget
+	// even when a composite command such as up runs several actions.
+	if s.recorded.Add(1) > maxUsageEventsPerInvocation {
+		log.Printf(
+			"telemetry: dropping usage event from %s, limit of %d reached",
+			extension.Id, maxUsageEventsPerInvocation)
+
+		return &azdext.ReportUsageResponse{Accepted: false}, nil
 	}
 
 	// Record a dedicated span rather than augmenting the command span. The

@@ -229,13 +229,15 @@ guarantees about the whole class:
 
 | Rule | Enforcement |
 |------|-------------|
+| Eligibility | Only extensions installed from the official `azd` registry produce `ext.usage` spans. A call from any other install source succeeds but is dropped without recording |
 | Key namespace | Every caller-supplied key is prefixed with `ext.` by the host, so it can never overwrite a host-owned attribute |
 | Size | At most 32 attributes per event; event name and keys at most 128 characters; values at most 512 characters |
+| Volume | At most 100 `ext.usage` spans per `azd` invocation across all extensions; calls beyond that are dropped without recording |
 | Values | Not enumerated or pattern-checked. The extension author owns what a value means and is responsible for keeping it low cardinality and free of customer content |
 | Classification | Always `SystemMetadata` |
 | Purpose | Always `FeatureInsight` |
 | Trust | `extension.id`, `extension.version`, and `extension.source` are derived from host-signed claims and the installed record, never from the request, so an extension cannot assert which extension it is |
-| Review | Extension telemetry is reviewed with the extension, under the same documentation, classification, and privacy rules as core fields |
+| Review | Extension telemetry is reviewed when the extension is admitted to the official registry, under the same documentation, classification, and privacy rules as core fields. The eligibility rule above is what ties recording to that review |
 
 Because `ext.usage` spans share the command's trace, they join the originating
 command in Kusto on `operation_Id`. See

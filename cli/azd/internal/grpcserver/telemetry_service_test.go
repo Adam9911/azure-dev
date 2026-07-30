@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/azure/azure-dev/cli/azd/internal/tracing/events"
@@ -76,6 +78,21 @@ func callWithContext(
 	t.Helper()
 
 	service := newTelemetryService(stubExtensionLookup{extension: extension})
+
+	return callServiceWithContext(t, service, ctx, extension, req)
+}
+
+// callServiceWithContext runs the handler on an existing service, so a
+// test can make several calls against one per-invocation budget.
+func callServiceWithContext(
+	t *testing.T,
+	service *telemetryService,
+	ctx context.Context,
+	extension *extensions.Extension,
+	req *azdext.ReportUsageRequest,
+) (*azdext.ReportUsageResponse, error) {
+	t.Helper()
+
 	ctx = extensions.WithClaimsContext(ctx, &extensions.ExtensionClaims{
 		RegisteredClaims: jwt.RegisteredClaims{Subject: extension.Id},
 		Capabilities:     extension.Capabilities,
@@ -209,30 +226,134 @@ func Test_TelemetryService_PrefixKeysSoTheyCannotOverwriteHostFields(t *testing.
 		attributes[attribute.Key("ext.extension.id")])
 }
 
-func Test_TelemetryService_RecordsUnofficialSourceInsteadOfRejecting(t *testing.T) {
+func Test_TelemetryService_DropsEventFromUnofficialSource(t *testing.T) {
 	t.Parallel()
 
-	// Core reports ext.run and ext.install for extensions from any source,
-	// so usage events record the source as a dimension rather than gate on
-	// it. Downstream queries filter on extension.source instead.
+	// Values are authored by the extension and are never reviewed at
+	// runtime, so only registry-admitted extensions reach the pipeline.
+	// A blank source is not official either: the upgrade resolver
+	// defaults it to the main registry, but a gate cannot inherit that.
+	sources := map[string]string{
+		"dev registry": "dev",
+		"blank":        "",
+	}
+
+	for name, source := range sources {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, command := testTracerProvider.Tracer("test").Start(t.Context(), "cmd.deploy")
+			defer command.End()
+
+			extension := testExtension()
+			extension.Source = source
+
+			resp, err := callWithContext(t, ctx, extension, &azdext.ReportUsageRequest{
+				EventName: "deploy.completed",
+			})
+
+			// Dropping is not an error, so an author runs the same
+			// code path whether or not the event was kept.
+			require.NoError(t, err)
+			require.False(t, resp.Accepted)
+			require.Empty(t, usageSpansIn(command.SpanContext().TraceID()))
+		})
+	}
+}
+
+func Test_TelemetryService_CapsEventsPerInvocation(t *testing.T) {
+	t.Parallel()
+
+	// The per-event bounds say nothing about how many events arrive,
+	// and ReportUsage can be called in a loop.
 	ctx, command := testTracerProvider.Tracer("test").Start(t.Context(), "cmd.deploy")
 	defer command.End()
 
 	extension := testExtension()
-	extension.Source = "dev"
+	service := newTelemetryService(stubExtensionLookup{extension: extension})
+	report := func() (*azdext.ReportUsageResponse, error) {
+		return callServiceWithContext(t, service, ctx, extension,
+			&azdext.ReportUsageRequest{EventName: "deploy.completed"})
+	}
 
-	resp, err := callWithContext(t, ctx, extension, &azdext.ReportUsageRequest{
-		EventName: "deploy.completed",
-	})
+	for range maxUsageEventsPerInvocation {
+		resp, err := report()
+		require.NoError(t, err)
+		require.True(t, resp.Accepted)
+	}
+
+	resp, err := report()
+	require.NoError(t, err)
+	require.False(t, resp.Accepted)
+	require.Len(t,
+		usageSpansIn(command.SpanContext().TraceID()),
+		maxUsageEventsPerInvocation)
+}
+
+func Test_TelemetryService_RejectedCallDoesNotSpendBudget(t *testing.T) {
+	t.Parallel()
+
+	// Budget belongs to events that would otherwise be recorded, so a
+	// buggy extension cannot starve a well-behaved one.
+	ctx, command := testTracerProvider.Tracer("test").Start(t.Context(), "cmd.deploy")
+	defer command.End()
+
+	extension := testExtension()
+	service := newTelemetryService(stubExtensionLookup{extension: extension})
+
+	for range maxUsageEventsPerInvocation {
+		_, err := callServiceWithContext(t, service, ctx, extension,
+			&azdext.ReportUsageRequest{
+				EventName:  "deploy.completed",
+				Attributes: map[string]string{"": "container"},
+			})
+		requireCode(t, err, codes.InvalidArgument)
+	}
+
+	resp, err := callServiceWithContext(t, service, ctx, extension,
+		&azdext.ReportUsageRequest{EventName: "deploy.completed"})
 
 	require.NoError(t, err)
 	require.True(t, resp.Accepted)
+	require.Len(t, usageSpansIn(command.SpanContext().TraceID()), 1)
+}
 
-	recorded := usageSpansIn(command.SpanContext().TraceID())
-	require.Len(t, recorded, 1)
-	require.Equal(t,
-		attribute.StringValue("dev"),
-		attributesOf(recorded[0])[fields.ExtensionSource.Key])
+func Test_TelemetryService_CapHoldsUnderConcurrentCalls(t *testing.T) {
+	t.Parallel()
+
+	// Service target providers deploy concurrently, so the budget has
+	// to hold when several goroutines report at the same time.
+	ctx, command := testTracerProvider.Tracer("test").Start(t.Context(), "cmd.deploy")
+	defer command.End()
+
+	extension := testExtension()
+	service := newTelemetryService(stubExtensionLookup{extension: extension})
+
+	var wg sync.WaitGroup
+	var accepted, failed atomic.Int64
+
+	for range maxUsageEventsPerInvocation * 2 {
+		wg.Go(func() {
+			resp, err := callServiceWithContext(t, service, ctx, extension,
+				&azdext.ReportUsageRequest{EventName: "deploy.completed"})
+			if err != nil {
+				failed.Add(1)
+				return
+			}
+
+			if resp.Accepted {
+				accepted.Add(1)
+			}
+		})
+	}
+
+	wg.Wait()
+
+	require.Zero(t, failed.Load())
+	require.Equal(t, int64(maxUsageEventsPerInvocation), accepted.Load())
+	require.Len(t,
+		usageSpansIn(command.SpanContext().TraceID()),
+		maxUsageEventsPerInvocation)
 }
 
 func Test_TelemetryService_RecordsNoSpanWhenRejected(t *testing.T) {

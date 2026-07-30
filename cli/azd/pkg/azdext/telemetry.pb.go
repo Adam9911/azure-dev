@@ -83,7 +83,10 @@ func (x *ReportUsageRequest) GetAttributes() map[string]string {
 
 type ReportUsageResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Accepted reports whether the host recorded the event.
+	// Accepted reports whether the host recorded the event. A false value is
+	// not an error: the extension was not installed from the official azd
+	// registry, or the per-invocation event budget is already spent. Callers
+	// should not branch on it.
 	Accepted      bool `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

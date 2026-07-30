@@ -74,7 +74,7 @@ Commands follow the pattern `cmd.<command.path>` where spaces become dots.
 | `ext.install` | Extension installation |
 | `ext.upgrade` | Extension upgrade attempt |
 | `ext.promote` | Registry promotion (e.g., dev → main) |
-| `ext.usage` | Usage event reported by an extension through the telemetry service |
+| `ext.usage` | Usage event reported by an extension through the telemetry service (official-registry extensions only) |
 
 ### Agent & Copilot Events
 
@@ -470,6 +470,11 @@ extension chooses the event name, the key suffixes, and the values. The whole
 class is classified as `SystemMetadata` for `FeatureInsight`. Extension authors
 are responsible for keeping values low cardinality and free of customer
 content, and for having them privacy reviewed with their extension.
+
+Only extensions installed from the official `azd` registry produce these spans,
+which is what ties the recorded values to that privacy review. A report from any
+other install source succeeds but records nothing, as does any report past the
+limit of 100 spans per `azd` invocation.
 </details>
 
 <details>
