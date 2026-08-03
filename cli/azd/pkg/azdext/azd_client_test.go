@@ -66,6 +66,49 @@ func Test_WithAccessToken_OmitsMissingTraceContext(t *testing.T) {
 	require.Empty(t, md.Get(TracestateKey))
 }
 
+func Test_WithAccessToken_DropsMalformedEnvTraceparent(t *testing.T) {
+	// A trailing newline is easy to pick up from a shell such as
+	// `export TRACEPARENT=$(cat file)`, and gRPC rejects metadata
+	// holding non-printable bytes for every call on the client.
+	t.Setenv(TraceparentEnv, testTraceparent()+"\n")
+	t.Setenv(TracestateEnv, "vendor=value")
+
+	md, ok := metadata.FromOutgoingContext(WithAccessToken(t.Context(), "token"))
+
+	require.True(t, ok)
+	require.Equal(t, []string{"token"}, md.Get("authorization"))
+	require.Empty(t, md.Get(TraceparentKey))
+	require.Empty(t, md.Get(TracestateKey))
+	requirePrintableMetadata(t, md)
+}
+
+func Test_WithAccessToken_DropsMalformedEnvTracestate(t *testing.T) {
+	t.Setenv(TraceparentEnv, testTraceparent())
+	t.Setenv(TracestateEnv, "vendor=value\n")
+
+	md, ok := metadata.FromOutgoingContext(WithAccessToken(t.Context(), "token"))
+
+	require.True(t, ok)
+	require.Equal(t, []string{testTraceparent()}, md.Get(TraceparentKey))
+	require.Empty(t, md.Get(TracestateKey))
+	requirePrintableMetadata(t, md)
+}
+
+// requirePrintableMetadata asserts every metadata value is printable
+// ASCII, which is what gRPC requires of outgoing headers.
+func requirePrintableMetadata(t *testing.T, md metadata.MD) {
+	t.Helper()
+
+	for key, values := range md {
+		for _, value := range values {
+			for i := range len(value) {
+				require.Truef(t, value[i] >= 0x20 && value[i] <= 0x7e,
+					"metadata %q holds non-printable byte %#x", key, value[i])
+			}
+		}
+	}
+}
+
 func Test_IsLocalhostAddress(t *testing.T) {
 	tests := []struct {
 		name     string

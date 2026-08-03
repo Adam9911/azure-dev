@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -98,28 +99,36 @@ func WithAccessToken(ctx context.Context, params ...string) context.Context {
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(pairs...))
 }
 
-// traceContextPairs returns W3C trace context metadata pairs. A span already
-// on ctx wins; otherwise the TRACEPARENT/TRACESTATE variables azd sets on the
-// extension process are used, which is the common case because extensions
-// build their context from scratch.
+// traceContextPairs returns W3C trace context metadata pairs. A span
+// already on ctx wins; otherwise the TRACEPARENT/TRACESTATE variables
+// azd sets on the extension process are used, which is the common
+// case because extensions build their context from scratch. Values
+// always round-trip through the propagator, so only well-formed trace
+// context reaches gRPC metadata.
 func traceContextPairs(ctx context.Context) []string {
-	carrier := propagation.MapCarrier{}
-	propagation.TraceContext{}.Inject(ctx, carrier)
+	propagator := propagation.TraceContext{}
 
-	parent := carrier.Get(TraceparentKey)
-	state := carrier.Get(TracestateKey)
-
-	if parent == "" {
-		parent = os.Getenv(TraceparentEnv)
-		state = os.Getenv(TracestateEnv)
+	// Extract rather than forward the environment values directly. A
+	// malformed one is dropped here instead of reaching gRPC, which
+	// rejects headers holding non-printable characters and would fail
+	// every call on this client, not just telemetry.
+	if !trace.SpanContextFromContext(ctx).IsValid() {
+		ctx = propagator.Extract(ctx, propagation.MapCarrier{
+			TraceparentKey: os.Getenv(TraceparentEnv),
+			TracestateKey:  os.Getenv(TracestateEnv),
+		})
 	}
 
+	carrier := propagation.MapCarrier{}
+	propagator.Inject(ctx, carrier)
+
+	parent := carrier.Get(TraceparentKey)
 	if parent == "" {
 		return nil
 	}
 
 	pairs := []string{TraceparentKey, parent}
-	if state != "" {
+	if state := carrier.Get(TracestateKey); state != "" {
 		pairs = append(pairs, TracestateKey, state)
 	}
 
